@@ -35,6 +35,7 @@ class SnakeGame:
         pygame.display.set_caption("Snake")
         self.clock = pygame.time.Clock()
         self.game_over = False
+        self.food = None
         self.reset()
 
     def reset(self) -> None:

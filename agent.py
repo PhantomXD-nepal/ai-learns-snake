@@ -5,6 +5,7 @@ from snakeGameAI import SnakeGameAi, Direction, point
 from collections import deque
 from model import Linear_QNet, QTrainer
 from helper import plot
+import os
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
@@ -14,13 +15,16 @@ LR = 0.001
 class Agent:
 
     def __init__(self) -> None:
-        self.n_games = 0
+        self.n_games = 40
         self.epsilon = 0  # Randomness calculator
         self.gamma = 0.82  # Discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()
 
         self.model = Linear_QNet(11, 512, 3)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+
+        # Load model if it exists
+        self.load_model()
 
     def get_state(self, game: SnakeGameAi):
         head = game.snake[0]
@@ -64,6 +68,20 @@ class Agent:
 
         return np.array(state, dtype=int)
 
+    def load_model(self, file_name="model.pth"):
+        """Load the model from file if it exists"""
+        model_folder_path = "./model"
+        file_path = os.path.join(model_folder_path, file_name)
+
+        if os.path.exists(file_path):
+            self.model.load_state_dict(torch.load(file_path))
+            self.model.eval()  # Set to evaluation mode initially
+            print(f"✓ Loaded existing model from {file_path}")
+            print("  Continuing training from saved weights...")
+        else:
+            print(f"✗ No existing model found at {file_path}")
+            print("  Starting training from scratch...")
+
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 
@@ -83,7 +101,7 @@ class Agent:
         # IMPROVED: Epsilon now stays non-negative
         self.epsilon = max(0, 80 - self.n_games)
         final_move = [0, 0, 0]
-        if random.randint(0, 200) < self.epsilon:
+        if random.randint(0, 160) < self.epsilon:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:

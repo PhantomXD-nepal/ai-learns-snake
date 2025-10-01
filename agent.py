@@ -15,7 +15,7 @@ LR = 0.001
 class Agent:
 
     def __init__(self) -> None:
-        self.n_games = 40
+        self.n_games = 250
         self.epsilon = 0  # Randomness calculator
         self.gamma = 0.82  # Discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()

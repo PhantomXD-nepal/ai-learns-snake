@@ -19,11 +19,10 @@ class Agent:
         self.gamma = 0.82  # Discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()
 
-        # TODO: model and trainer
         self.model = Linear_QNet(11, 512, 3)
-        self.trainer = QTrainer(self.model, learning_rate=LR, gamma=self.gamma)
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
-    def get_state(self, game):
+    def get_state(self, game: SnakeGameAi):
         head = game.snake[0]
         point_l = point(head.x - 20, head.y)
         point_r = point(head.x + 20, head.y)
@@ -47,10 +46,10 @@ class Agent:
             or (dir_l and game._is_collision(point_u))
             or (dir_r and game._is_collision(point_d)),
             # Danger left
-            (dir_d and game.is_collision(point_r))
-            or (dir_u and game.is_collision(point_l))
-            or (dir_r and game.is_collision(point_u))
-            or (dir_l and game.is_collision(point_d)),
+            (dir_d and game._is_collision(point_r))
+            or (dir_u and game._is_collision(point_l))
+            or (dir_r and game._is_collision(point_u))
+            or (dir_l and game._is_collision(point_d)),
             # Current direction
             dir_l,
             dir_r,
@@ -81,13 +80,12 @@ class Agent:
         self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
-        self.epsilon = 80 - self.n_games
+        # IMPROVED: Epsilon now stays non-negative
+        self.epsilon = max(0, 80 - self.n_games)
         final_move = [0, 0, 0]
-        if (
-            random.randint(0, 200) < self.epsilon
-        ):  # This makes sure the mrore the games played the less the probability of the random move being called.
-            move = random.randint(0, 2)  # Get a random index
-            final_move[move] = 1  # do a random action
+        if random.randint(0, 200) < self.epsilon:
+            move = random.randint(0, 2)
+            final_move[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
@@ -113,7 +111,8 @@ def train():
         final_move = agent.get_action(state_old)
 
         # Perform move and get new state
-        reward, done, score = game.play_step(final_move)
+        # FIXED: Correct return order from play_step
+        done, score, reward = game.play_step(final_move)
         new_state = agent.get_state(game)
 
         # Train short memory
@@ -123,20 +122,21 @@ def train():
         agent.remember(state_old, final_move, reward, new_state, done)
 
         if done:
-            # Train long memory
+            # Train long memory and reset
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()
 
             if score > record:
                 record = score
-                # agent.model.save()
+                agent.model.save()
             print("Game:", agent.n_games, "Score:", score, "Record:", record)
 
             plot_scores.append(score)
             total_score += score
             mean_score = total_score / agent.n_games
             plot_avg_scores.append(mean_score)
+            plot(plot_scores, plot_avg_scores)
 
 
 if __name__ == "__main__":
